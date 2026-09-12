@@ -1,0 +1,19 @@
+# Config / data (contains API keys — never commit)
+config.json
+tracked_keys.json
+usage.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# macOS
+.DS_Store
+
+# Virtual envs
+.venv/
+venv/
