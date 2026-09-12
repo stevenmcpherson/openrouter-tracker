@@ -28,8 +28,8 @@ RED = "\U0001F534"      # 🔴
 GRAY = "\U0001F7E3"     # 🟣
 
 # Column widths for the table
-NAME_W = 22
-COL_W = 10   # for remaining, limit, all-time columns
+NAME_W = 20
+COL_W = 9   # for remaining, limit, daily, all-time columns
 
 # ─── Monospace attributed titles via PyObjC ──────────────────────
 
@@ -165,7 +165,8 @@ class ORTrackerApp(rumps.App):
             # Table header (disabled, monospace)
             header_text = (
                 f"   {'Key':<{NAME_W}s}"
-                f"  {'Remaining':>{COL_W}s}"
+                f"  {'Daily':>{COL_W}s}"
+                f"  {'Rem':>{COL_W}s}"
                 f"  {'Limit':>{COL_W}s}"
                 f"  {'All-time':>{COL_W}s}"
             )
@@ -225,6 +226,7 @@ class ORTrackerApp(rumps.App):
         limit = k.get("limit", 0)
         remaining = k.get("limit_remaining", 0)
         usage = k.get("usage", 0)
+        daily = k.get("usage_daily", 0)
         monthly = k.get("usage_monthly", 0)
         disabled = k.get("disabled", False)
 
@@ -233,6 +235,7 @@ class ORTrackerApp(rumps.App):
         if disabled:
             line = (
                 f"{GRAY}  {name_col}"
+                f"  {'—':>{COL_W}s}"
                 f"  {'disabled':>{COL_W}s}"
                 f"  {'—':>{COL_W}s}"
                 f"  {_money(usage)}"
@@ -252,6 +255,7 @@ class ORTrackerApp(rumps.App):
 
             line = (
                 f"{dot}  {name_col}"
+                f"  {_money(daily)}"
                 f"  {_money(remaining)}"
                 f"  {_money(limit)}"
                 f"  {_money(usage)}"
@@ -262,6 +266,7 @@ class ORTrackerApp(rumps.App):
             dot = GRAY
             line = (
                 f"{dot}  {name_col}"
+                f"  {_money(daily)}"
                 f"  {'no limit':>{COL_W}s}"
                 f"  {'—':>{COL_W}s}"
                 f"  {_money(usage)}"

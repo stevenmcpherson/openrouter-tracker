@@ -5,17 +5,17 @@ A macOS menu bar app that tracks your [OpenRouter](https://openrouter.ai) API cr
 ## What It Shows
 
 - **Menu bar:** Remaining account credits (e.g., `OR $42.50`) with color-coded status
-- **Dropdown table:** All API keys with remaining balance, monthly limit, and all-time usage
+- **Dropdown table:** All API keys with daily spend, remaining balance, monthly limit, and all-time usage
 - **Per-key progress bars** with color indicators (🟢 <50%, 🟡 50-80%, 🔴 >80%)
 - **Account-wide balance** with progress bar at the bottom
 
 ```
-   Key                      Remaining       Limit    All-time
-🟢  project-alpha               $30.00      $30.00       $0.78
-🟢  chatbot-dev                 $30.00      $30.00       $0.00
-🟢  production-api              $199.75     $200.00       $5.86
-🟡  research-bot                  $9.82      $10.00       $3.17
-🔴  main-app                    $299.01     $300.00     $219.46
+   Key                  Daily      Rem      Limit   All-time
+🟢  project-alpha        $0.00   $30.00     $30.00      $0.78
+🟢  chatbot-dev          $0.00   $30.00     $30.00      $0.00
+🟢  production-api       $0.00  $199.75    $200.00      $5.86
+🟡  research-bot         $0.00    $9.82     $10.00      $3.17
+🔴  main-app             $1.06  $299.01    $300.00    $219.46
 
 ✅  Balance  $42.50
 ████████████████████░░░░░  91% used of $500.00
