@@ -23,7 +23,7 @@ A macOS menu bar app that tracks your [OpenRouter](https://openrouter.ai) API cr
 
 ## How It Works
 
-The app uses an OpenRouter **provisioning key** to auto-discover all API keys on your account via `GET /api/v1/keys`. One call gets every key's usage, limit, and monthly spend. A second call to `GET /api/v1/credits` gets the account-wide balance.
+The app uses an OpenRouter **management key** to auto-discover all API keys on your account via `GET /api/v1/keys`. One call gets every key's usage, limit, and monthly spend. A second call to `GET /api/v1/credits` gets the account-wide balance.
 
 Snapshots are stored in a local SQLite database (`~/.openrouter-tracker/usage.db`) for future trend analysis.
 
@@ -35,13 +35,12 @@ Snapshots are stored in a local SQLite database (`~/.openrouter-tracker/usage.db
 pip install rumps
 ```
 
-### 2. Get a provisioning key
+### 2. Get a Management key
 
-1. Go to [https://openrouter.ai/keys](https://openrouter.ai/keys)
-2. Click **Create Key**
-3. Select **Provisioning Key** (not a regular API key)
-4. Name it whatever you like
-5. Copy the key
+1. Go to [https://openrouter.ai/settings/management-keys](https://openrouter.ai/settings/management-keys)
+2. Click **New Key**
+3. Name it whatever you like
+4. Copy the key
 
 ### 3. Configure
 
@@ -51,7 +50,7 @@ cat > ~/.openrouter-tracker/config.json << 'EOF'
 {
   "poll_interval_seconds": 300,
   "low_credit_threshold": 10.0,
-  "provisioning_key": "sk-or-v1-your-provisioning-key-here"
+  "provisioning_key": "sk-or-v1-your-management-key-here"
 }
 EOF
 ```
@@ -74,7 +73,7 @@ You should see `OR $XX.XX` appear in your menu bar.
 |---|---|---|
 | `poll_interval_seconds` | 300 | How often to refresh (5 minutes) |
 | `low_credit_threshold` | 10.0 | Dollar amount that triggers red status |
-| `provisioning_key` | "" | OpenRouter provisioning key for key auto-discovery |
+| `provisioning_key` | "" | OpenRouter management key for key auto-discovery |
 
 ## Menu Bar Status Indicators
 
