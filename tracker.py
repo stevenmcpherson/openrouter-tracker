@@ -201,9 +201,13 @@ class ORTrackerApp(rumps.App):
                 bal_icon = "\u2705"
 
             bar = _progress_bar(pct, 12)
-            bal_item = rumps.MenuItem(f"{bal_icon}  Balance  ${remaining:.2f}")
-            bal_item.subtitle = f"{bar}  {pct:.0f}% used of ${total:.2f}"
+            bal_item = rumps.MenuItem(f"{bal_icon}  Balance  ${remaining:.2f} / ${total:.2f}")
+            bal_item.subtitle = f"{bar}  {pct:.0f}% used"
             self.menu.add(bal_item)
+            # Also add a separate disabled item with just the bar (in case subtitles don't render)
+            bar_item = rumps.MenuItem(f"   {bar}  {pct:.0f}% used of ${total:.2f}")
+            bar_item.enabled = False
+            self.menu.add(bar_item)
 
         elif error:
             err_item = rumps.MenuItem(f"\u26a0\ufe0f  {error[:60]}")
@@ -245,7 +249,8 @@ class ORTrackerApp(rumps.App):
             return item
 
         if limit and limit > 0:
-            pct_used = (usage / limit * 100) if limit > 0 else 0
+            # Use monthly usage (not all-time) for percentage — the limit is monthly
+            pct_used = (monthly / limit * 100) if limit > 0 else 0
             if pct_used >= 80:
                 dot = RED
             elif pct_used >= 50:
@@ -261,7 +266,7 @@ class ORTrackerApp(rumps.App):
                 f"  {_money(usage)}"
             )
             bar = _progress_bar(pct_used, 12)
-            sub = f"{bar}  {pct_used:.1f}% used  \u00b7  this month: ${monthly:.2f}"
+            sub = f"{bar}  {pct_used:.1f}% of monthly limit  \u00b7  this month: ${monthly:.2f}"
         else:
             dot = GRAY
             line = (
