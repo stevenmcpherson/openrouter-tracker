@@ -12,6 +12,10 @@ def get_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
+    # Limit SQLite memory usage — 8 MB cache max
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA cache_size=-8000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
@@ -42,6 +46,8 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+    # Prune old snapshots at startup
+    prune_old_snapshots(days=1)
 
 
 def save_snapshot(label, key_suffix, credits, key_info, status="ok"):

@@ -41,6 +41,7 @@ except ImportError:
     _HAS_FONTS = False
 
 _mono_font = None
+_mono_attrs = None
 
 
 def _get_mono_font():
@@ -51,14 +52,23 @@ def _get_mono_font():
     return _mono_font
 
 
+def _get_mono_attrs():
+    global _mono_attrs
+    if _mono_attrs is None:
+        font = _get_mono_font()
+        _mono_attrs = NSMutableDictionary.dictionaryWithObject_forKey_(font, NSFontAttributeName)
+        # Retain so it survives across runloop iterations
+        from Foundation import NSObject
+        _mono_attrs.retain()
+    return _mono_attrs
+
+
 def _set_mono_title(item, text):
     """Set an attributed title with monospace font on a rumps MenuItem."""
     if not _HAS_FONTS:
         item.title = text
         return
-    font = _get_mono_font()
-    attrs = NSMutableDictionary.dictionary()
-    attrs.setObject_forKey_(font, NSFontAttributeName)
+    attrs = _get_mono_attrs()
     attr_str = NSAttributedString.alloc().initWithString_attributes_(text, attrs)
     item._menuitem.setAttributedTitle_(attr_str)
 
@@ -75,12 +85,19 @@ class ORTrackerApp(rumps.App):
         super(ORTrackerApp, self).__init__(name=APP_NAME, title="OR...", quit_button=None)
         self.cfg = cfg.load_config()
         self.last_refresh = 0
+        self._last_save = {}          # label → timestamp throttle for DB writes
+        self._last_credits = None     # skip menu rebuild if unchanged
+        self._last_keys = None
 
         storage.init_db()
 
         interval = self.cfg.get("poll_interval_seconds", 300)
         self.timer = rumps.Timer(self._tick, interval)
         self.timer.start()
+
+        # Prune DB every 6 hours
+        self._prune_timer = rumps.Timer(self._prune_db, 6 * 3600)
+        self._prune_timer.start()
 
         rumps.Timer(self._initial_fetch, 1).start()
 
@@ -91,6 +108,9 @@ class ORTrackerApp(rumps.App):
 
     def _tick(self, _sender):
         self._fetch_and_update()
+
+    def _prune_db(self, _sender):
+        storage.prune_old_snapshots(days=1)
 
     def _force_refresh(self, _sender):
         self.title = "OR..."
@@ -120,15 +140,19 @@ class ORTrackerApp(rumps.App):
             self._rebuild_menu(credits=credits, error=f"Keys: {e}")
             return
 
+        now = time.time()
         for k in keys:
             name = k.get("name") or k.get("label", "unnamed")
-            storage.save_snapshot(
-                label=name,
-                key_suffix=k.get("label", ""),
-                credits=credits,
-                key_info=k,
-                status="disabled" if k.get("disabled") else "ok",
-            )
+            # Throttle: max one snapshot per key per 60s
+            if now - self._last_save.get(name, 0) >= 60:
+                storage.save_snapshot(
+                    label=name,
+                    key_suffix=k.get("label", ""),
+                    credits=credits,
+                    key_info=k,
+                    status="disabled" if k.get("disabled") else "ok",
+                )
+                self._last_save[name] = now
 
         remaining = credits["remaining"]
         threshold = self.cfg.get("low_credit_threshold", 10.0)
@@ -139,8 +163,16 @@ class ORTrackerApp(rumps.App):
         else:
             self.title = f"OR ${remaining:.2f}"
 
-        self._rebuild_menu(credits=credits, keys=keys)
-        self.last_refresh = time.time()
+        # Skip menu rebuild if nothing changed
+        same = (
+            self._last_credits == credits
+            and self._last_keys == keys
+        )
+        if not same:
+            self._rebuild_menu(credits=credits, keys=keys)
+            self._last_credits = credits
+            self._last_keys = keys
+        self.last_refresh = now
 
     # ─── Menu builder ───────────────────────────────────────────────
 
