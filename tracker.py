@@ -107,7 +107,10 @@ class ORTrackerApp(rumps.App):
         self._fetch_and_update()
 
     def _tick(self, _sender):
-        self._fetch_and_update()
+        # Guard against rumps timer firing faster than configured interval
+        interval = self.cfg.get("poll_interval_seconds", 300)
+        if time.time() - self.last_refresh >= interval:
+            self._fetch_and_update()
 
     def _prune_db(self, _sender):
         storage.prune_old_snapshots(days=1)
