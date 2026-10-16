@@ -11,6 +11,7 @@ Run: python3 tracker.py
 
 import datetime
 import sys
+import threading
 import time
 
 import rumps
@@ -84,7 +85,7 @@ class ORTrackerApp(rumps.App):
     def __init__(self):
         super(ORTrackerApp, self).__init__(name=APP_NAME, title="OR...", quit_button=None)
         self.cfg = cfg.load_config()
-        self.last_refresh = 0
+        self.last_refresh = time.time()  # prevent _tick from firing immediately before _initial_fetch
         self._last_save = {}          # label → timestamp throttle for DB writes
         self._last_credits = None     # skip menu rebuild if unchanged
         self._last_keys = None
@@ -99,11 +100,12 @@ class ORTrackerApp(rumps.App):
         self._prune_timer = rumps.Timer(self._prune_db, 6 * 3600)
         self._prune_timer.start()
 
-        rumps.Timer(self._initial_fetch, 1).start()
+        # One-shot initial fetch after 1s delay (rumps.Timer repeats, so use threading.Timer)
+        threading.Timer(1, self._initial_fetch).start()
 
     # ─── Timer / refresh ────────────────────────────────────────────
 
-    def _initial_fetch(self, _sender):
+    def _initial_fetch(self):
         self._fetch_and_update()
 
     def _tick(self, _sender):
