@@ -85,41 +85,43 @@ class ORTrackerApp(rumps.App):
     def __init__(self):
         super(ORTrackerApp, self).__init__(name=APP_NAME, title="OR...", quit_button=None)
         self.cfg = cfg.load_config()
-        self.last_refresh = time.time()  # prevent _tick from firing immediately before _initial_fetch
+        self.last_refresh = 0
         self._last_save = {}          # label → timestamp throttle for DB writes
         self._last_credits = None     # skip menu rebuild if unchanged
         self._last_keys = None
+        self._running = True
 
         storage.init_db()
 
+        # Background polling thread — rumps.Timer stops firing when app is backgrounded
+        # on macOS. threading-based loop keeps running regardless.
+        t = threading.Thread(target=self._poll_loop, daemon=True)
+        t.start()
+
+        # Prune DB thread
+        p = threading.Thread(target=self._prune_loop, daemon=True)
+        p.start()
+
+    def _poll_loop(self):
         interval = self.cfg.get("poll_interval_seconds", 300)
-        self.timer = rumps.Timer(self._tick, interval)
-        self.timer.start()
-
-        # Prune DB every 6 hours
-        self._prune_timer = rumps.Timer(self._prune_db, 6 * 3600)
-        self._prune_timer.start()
-
-        # One-shot initial fetch after 1s delay (rumps.Timer repeats, so use threading.Timer)
-        threading.Timer(1, self._initial_fetch).start()
-
-    # ─── Timer / refresh ────────────────────────────────────────────
-
-    def _initial_fetch(self):
-        self._fetch_and_update()
-
-    def _tick(self, _sender):
-        # Guard against rumps timer firing faster than configured interval
-        interval = self.cfg.get("poll_interval_seconds", 300)
-        if time.time() - self.last_refresh >= interval:
+        while self._running:
             self._fetch_and_update()
+            self.last_refresh = time.time()
+            # Sleep in small increments so we can exit quickly if needed
+            slept = 0
+            while slept < interval and self._running:
+                time.sleep(1)
+                slept += 1
 
-    def _prune_db(self, _sender):
-        storage.prune_old_snapshots(days=1)
+    def _prune_loop(self):
+        while self._running:
+            time.sleep(6 * 3600)
+            if self._running:
+                storage.prune_old_snapshots(days=1)
 
     def _force_refresh(self, _sender):
         self.title = "OR..."
-        self._fetch_and_update()
+        threading.Thread(target=self._fetch_and_update, daemon=True).start()
 
     # ─── API calls ──────────────────────────────────────────────────
 
