@@ -9,9 +9,12 @@ import urllib.error
 BASE = "https://openrouter.ai/api/v1"
 
 # macOS system Python uses LibreSSL which can have intermittent handshake
-# failures. Create a context with relaxed settings for reliability.
+# failures. Create a context with compatibility settings for reliability.
 _ssl_ctx = ssl.create_default_context()
-_ssl_ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+try:
+    _ssl_ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+except ssl.SSLError:
+    pass  # LibreSSL doesn't support @SECLEVEL syntax
 
 
 def _get(path, key, timeout=15, retries=3):
