@@ -1,29 +1,43 @@
 """OpenRouter API client — provisioning key discovery + per-key usage polling."""
 
 import json
+import ssl
+import time
 import urllib.request
 import urllib.error
 
 BASE = "https://openrouter.ai/api/v1"
 
+# macOS system Python uses LibreSSL which can have intermittent handshake
+# failures. Create a context with relaxed settings for reliability.
+_ssl_ctx = ssl.create_default_context()
+_ssl_ctx.set_ciphers("DEFAULT@SECLEVEL=1")
 
-def _get(path, key, timeout=10):
-    """GET an OpenRouter endpoint. Returns parsed JSON or raises."""
+
+def _get(path, key, timeout=15, retries=3):
+    """GET an OpenRouter endpoint with retry logic. Returns parsed JSON or raises."""
     url = f"{BASE}{path}"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}"})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()
+    last_err = None
+    for attempt in range(retries):
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}"})
         try:
-            err = json.loads(body)
-            msg = err.get("error", {}).get("message", body)
-        except Exception:
-            msg = body
-        raise RuntimeError(f"HTTP {e.code}: {msg}") from None
-    except Exception as e:
-        raise RuntimeError(str(e)) from e
+            with urllib.request.urlopen(req, timeout=timeout, context=_ssl_ctx) as resp:
+                return json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            try:
+                err = json.loads(body)
+                msg = err.get("error", {}).get("message", body)
+            except Exception:
+                msg = body
+            raise RuntimeError(f"HTTP {e.code}: {msg}") from None
+        except (urllib.error.URLError, OSError, ssl.SSLError) as e:
+            last_err = e
+            if attempt < retries - 1:
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise RuntimeError(f"Connection failed after {retries} retries: {e}") from None
+    raise RuntimeError(f"Connection failed: {last_err}") from None
 
 
 def list_keys(provisioning_key):
